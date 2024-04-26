@@ -56,7 +56,7 @@ class User extends Authenticatable
      */
     public function loadRelationshipCounts()
     {
-        $this->loadCount(['microposts', 'followings', 'followers']);
+        $this->loadCount(['microposts', 'followings', 'followers' , 'favorites']);
     }
     
     /**
@@ -74,6 +74,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(User::class, 'user_follow', 'follow_id', 'user_id')->withTimestamps();
     }
+    
     public function follow(int $userId)
     {
         $exist = $this->is_following($userId);
@@ -116,6 +117,7 @@ class User extends Authenticatable
     {
         return $this->followings()->where('follow_id', $userId)->exists();
     }
+    
     /**
      * このユーザーとフォロー中ユーザーの投稿に絞り込む。
      */
@@ -128,4 +130,48 @@ class User extends Authenticatable
         // それらのユーザーが所有する投稿に絞り込む
         return Micropost::whereIn('user_id', $userIds);
     }
+    
+    /**
+     * このユーザーがお気に入りの投稿
+     */
+     public function favorites()
+     {
+         return $this->belongsToMany(Micropost::class, 'favorites' , 'user_id' , 'micropost_id')->withTimestamps();
+     }
+     
+     /**
+      * 投稿をお気に入り登録する
+      */
+      public function favorite(int $micropost_id)
+      {
+        $exist = $this->is_favorite($micropost_id);
+        if ($exist) {
+            return false;
+        } else {
+            $this->favorites()->attach($micropost_id);
+            return true;
+        }
+      }
+      
+      /**
+       * 投稿のお気に入り登録を外す
+       */
+       public function unfavorite(int $micropost_id)
+       {
+        $exist = $this->is_favorite($micropost_id);
+        if ($exist) {
+            $this->favorites()->detach($micropost_id);
+            return true;
+        } else {
+            return false;
+        }
+       }
+       
+       /**
+        * 指定された$micropots_idの投稿をこのユーザーがすでにお気に入り登録しているか返す。しているならtrue
+        */
+        public function is_favorite(int $micropost_id)
+        {
+            return $this->favorites()->where('micropost_id',$micropost_id)->exists();
+        }
 }
